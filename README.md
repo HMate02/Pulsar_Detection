@@ -1,1 +1,1 @@
-# Pulsar_Detection
+# Pulsar Detection
