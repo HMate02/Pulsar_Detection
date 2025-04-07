@@ -1,1 +1,80 @@
-{"nbformat":4,"nbformat_minor":0,"metadata":{"colab":{"provenance":[],"authorship_tag":"ABX9TyNev4RNwpgWG/R91px/JOtr"},"kernelspec":{"name":"python3","display_name":"Python 3"},"language_info":{"name":"python"}},"cells":[{"cell_type":"code","execution_count":null,"metadata":{"id":"s_GtjL8kK7Mv","colab":{"base_uri":"https://localhost:8080/"},"executionInfo":{"status":"ok","timestamp":1744019156183,"user_tz":-120,"elapsed":24637,"user":{"displayName":"Máté Horváth","userId":"15696021487141530649"}},"outputId":"02206aa9-aaed-4d8c-9cff-b152f67ee7b0"},"outputs":[{"output_type":"stream","name":"stdout","text":["Collecting fastapi\n","  Downloading fastapi-0.115.12-py3-none-any.whl.metadata (27 kB)\n","Collecting starlette<0.47.0,>=0.40.0 (from fastapi)\n","  Downloading starlette-0.46.1-py3-none-any.whl.metadata (6.2 kB)\n","Requirement already satisfied: pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4 in /usr/local/lib/python3.11/dist-packages (from fastapi) (2.11.1)\n","Requirement already satisfied: typing-extensions>=4.8.0 in /usr/local/lib/python3.11/dist-packages (from fastapi) (4.13.0)\n","Requirement already satisfied: annotated-types>=0.6.0 in /usr/local/lib/python3.11/dist-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (0.7.0)\n","Requirement already satisfied: pydantic-core==2.33.0 in /usr/local/lib/python3.11/dist-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (2.33.0)\n","Requirement already satisfied: typing-inspection>=0.4.0 in /usr/local/lib/python3.11/dist-packages (from pydantic!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0,>=1.7.4->fastapi) (0.4.0)\n","Requirement already satisfied: anyio<5,>=3.6.2 in /usr/local/lib/python3.11/dist-packages (from starlette<0.47.0,>=0.40.0->fastapi) (4.9.0)\n","Requirement already satisfied: idna>=2.8 in /usr/local/lib/python3.11/dist-packages (from anyio<5,>=3.6.2->starlette<0.47.0,>=0.40.0->fastapi) (3.10)\n","Requirement already satisfied: sniffio>=1.1 in /usr/local/lib/python3.11/dist-packages (from anyio<5,>=3.6.2->starlette<0.47.0,>=0.40.0->fastapi) (1.3.1)\n","Downloading fastapi-0.115.12-py3-none-any.whl (95 kB)\n","\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m95.2/95.2 kB\u001b[0m \u001b[31m4.3 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n","\u001b[?25hDownloading starlette-0.46.1-py3-none-any.whl (71 kB)\n","\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m72.0/72.0 kB\u001b[0m \u001b[31m4.5 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n","\u001b[?25hInstalling collected packages: starlette, fastapi\n","Successfully installed fastapi-0.115.12 starlette-0.46.1\n"]}],"source":["from fastapi import FastAPI\n","from pydantic import BaseModel\n","from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_curve, roc_auc_score, auc, confusion_matrix\n","from sklearn.model_selection import train_test_split\n","import pandas as pd\n","import joblib\n","import requests\n","import os\n","\n","SEED = 42\n","app = FastAPI()\n","\n","class ModelInput(BaseModel):\n","  model_type: str  # baseline / stacked\n","  model_name: str # AdaBoost / CatBoost / ...\n","  sampling : str # SMOTE / ADASYN / TomekLinks / None\n","\n","def get_model_path(model_type, model_name, sampling):\n","  if sampling == \"none\":\n","    filename = f\"{model_type}_{model_name}_without_smote.pkl\"\n","  else:\n","    filename = f\"{model_type}_{model_name}_with_{sampling}.pkl\"\n","\n","  local_path = os.path.join(\"models\", filename)\n","  github_url = f\"https://raw.githubusercontent.com/HMate02/Pulsar_Detection/main/api/models/{model_name}/{filename}\"\n","\n","  if not os.path.exists(\"models\"):\n","    os.makedirs(\"models\")\n","\n","  if not os.path.exists(local_path):\n","    r = requests.get(github_url)\n","    if r.status_code == 200:\n","      with open(local_path, \"wb\") as f:\n","        f.write(r.content)\n","    else:\n","      raise FileNotFoundError(f\"A modell nem található: {github_url}\")\n","\n","  return local_path\n","\n","@app.post(\"/predict_model\")\n","def predict_model(input: ModelInput):\n","  model_path = get_model_path(input.model_type, input.model_name, input.sampling)\n","  model = joblib.load(model_path)\n","\n","  htru2_data = pd.read_csv('https://raw.githubusercontent.com/szbela87/ml_22_elteik/main/data/HTRU_2.csv', header=None)\n","  X = htru2_data.drop(\"class\", axis=1)\n","  y = htru2_data[\"class\"]\n","\n","  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=SEED)\n","  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1/0.9, random_state=SEED)\n","\n","  model.fit(X_train, y_train)\n","\n","  y_pred = model.predict(X_test)\n","\n","  accuracy = accuracy_score(y_test, y_pred)\n","  auc = roc_auc_score(y_test, y_pred)\n","  f1 = f1_score(y_test, y_pred)\n","  precision = precision_score(y_test, y_pred)\n","  recall = recall_score(y_test, y_pred)\n","  conf_matrix = confusion_matrix(y_test, y_pred)\n","\n","  return {\n","      \"accuracy\" : accuracy,\n","      \"auc\" : auc,\n","      \"f1\" : f1,\n","      \"precision\" : precision,\n","      \"recall\" : recall,\n","      \"confusion_matrix\" : conf_matrix.tolist()\n","  }"]},{"cell_type":"code","source":[],"metadata":{"id":"m0NYIwUpQJS5"},"execution_count":null,"outputs":[]}]}
+# -*- coding: utf-8 -*-
+"""main.ipynb
+
+Automatically generated by Colab.
+
+Original file is located at
+    https://colab.research.google.com/drive/1KiAPkRW1mSXaLkJPcrypDT2X9eosICBk
+"""
+
+from fastapi import FastAPI
+from pydantic import BaseModel
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_curve, roc_auc_score, auc, confusion_matrix
+from sklearn.model_selection import train_test_split
+import pandas as pd
+import joblib
+import requests
+import os
+
+SEED = 42
+app = FastAPI()
+
+class ModelInput(BaseModel):
+  model_type: str  # baseline / stacked
+  model_name: str # AdaBoost / CatBoost / ...
+  sampling : str # SMOTE / ADASYN / TomekLinks / None
+
+def get_model_path(model_type, model_name, sampling):
+  if sampling == "none":
+    filename = f"{model_type}_{model_name}_without_smote.pkl"
+  else:
+    filename = f"{model_type}_{model_name}_with_{sampling}.pkl"
+
+  local_path = os.path.join("models", filename)
+  github_url = f"https://raw.githubusercontent.com/HMate02/Pulsar_Detection/main/api/models/{model_name}/{filename}"
+
+  if not os.path.exists("models"):
+    os.makedirs("models")
+
+  if not os.path.exists(local_path):
+    r = requests.get(github_url)
+    if r.status_code == 200:
+      with open(local_path, "wb") as f:
+        f.write(r.content)
+    else:
+      raise FileNotFoundError(f"A modell nem található: {github_url}")
+
+  return local_path
+
+@app.post("/predict_model")
+def predict_model(input: ModelInput):
+  model_path = get_model_path(input.model_type, input.model_name, input.sampling)
+  model = joblib.load(model_path)
+
+  htru2_data = pd.read_csv('https://raw.githubusercontent.com/szbela87/ml_22_elteik/main/data/HTRU_2.csv', header=None)
+  X = htru2_data.drop("class", axis=1)
+  y = htru2_data["class"]
+
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=SEED)
+  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1/0.9, random_state=SEED)
+
+  model.fit(X_train, y_train)
+
+  y_pred = model.predict(X_test)
+
+  accuracy = accuracy_score(y_test, y_pred)
+  auc = roc_auc_score(y_test, y_pred)
+  f1 = f1_score(y_test, y_pred)
+  precision = precision_score(y_test, y_pred)
+  recall = recall_score(y_test, y_pred)
+  conf_matrix = confusion_matrix(y_test, y_pred)
+
+  return {
+      "accuracy" : accuracy,
+      "auc" : auc,
+      "f1" : f1,
+      "precision" : precision,
+      "recall" : recall,
+      "confusion_matrix" : conf_matrix.tolist()
+  }
+
