@@ -44,6 +44,7 @@ def get_model_path(model_type, model_name, sampling):
     else:
       raise FileNotFoundError(f"A modell nem található: {github_url}")
 
+  print(f"URL: {github_url}")
   return local_path
 
 @app.post("/predict_model")
