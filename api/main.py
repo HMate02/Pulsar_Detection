@@ -59,8 +59,6 @@ def predict_model(input: ModelInput):
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=SEED)
   X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1/0.9, random_state=SEED)
 
-  model.fit(X_train, y_train)
-
   y_pred = model.predict(X_test)
 
   accuracy = accuracy_score(y_test, y_pred)
