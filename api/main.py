@@ -122,6 +122,7 @@ def predict_model(input: ModelInput):
   model = joblib.load(model_path)
 
   htru2_data = pd.read_csv('https://raw.githubusercontent.com/szbela87/ml_22_elteik/main/data/HTRU_2.csv', header=None)
+  htru2_data.columns = ['mean_ip', 'std_ip', 'excess_kurt_ip', 'skewness_ip', 'mean_DMSNR', 'std_DMSNR', 'excess_kurt_DMSNR', 'skewness_DMSNR', 'class']
   X = htru2_data.drop("class", axis=1)
   y = htru2_data["class"]
 
