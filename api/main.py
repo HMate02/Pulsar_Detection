@@ -20,9 +20,9 @@ SEED = 42
 app = FastAPI()
 
 class ModelInput(BaseModel):
-  model_type: str  # baseline / stacked
-  model_name: str # AdaBoost / CatBoost / ...
-  sampling : str # SMOTE / ADASYN / TomekLinks / None
+  model_type: str
+  model_name: str
+  sampling : str
 
 def get_model_path(model_type, model_name, sampling):
   if sampling == "none":
@@ -30,21 +30,90 @@ def get_model_path(model_type, model_name, sampling):
   else:
     filename = f"{model_type}_{model_name}_with_{sampling}.pkl"
 
-  local_path = os.path.join("models", filename)
-  github_url = f"https://raw.githubusercontent.com/HMate02/Pulsar_Detection/main/api/models/{model_name}/{filename}"
+  local_dir = os.path.join("models")
+  local_path = os.path.join(local_dir, filename)
 
-  if not os.path.exists("models"):
-    os.makedirs("models")
+  if not os.path.exists(local_dir):
+    os.makedirs(local_dir)
 
   if not os.path.exists(local_path):
-    r = requests.get(github_url)
+
+    file_ids = {
+
+      # AdaBoost
+      "baseline_adaboost_without_smote.pkl" : "1T5PMCCMoWk4I0SoBtIZiWgANOnPL1QKh",
+      "baseline_adaboost_with_smote.pkl" : "11fjeOD7d6MIbO7Ugod_FSc-WPTtGcm5y",
+      "baseline_adaboost_with_adasyn.pkl" : "19t2yS7xZ-buPw_EPQCMsrfjgo8AvUysd",
+      "baseline_adaboost_with_tomeklinks.pkl" : "1vL8HM8bK6aNX5ORPwevkBHm6KW-B-Wn4",
+      "stacked_adaboost_without_smote.pkl" : "1l4ZcHWQIAWNQiBZDLiz71gB09C1cscCV",
+      "stacked_adaboost_with_smote.pkl" : "1UHbgZH4HFUMJacUUrG-VfJ0SiGlYBE7G",
+      "stacked_adaboost_with_adasyn.pkl" : "1tnPvVhvz8l2MYq_12S_jjLBSqGinJtC9",
+      "stacked_adaboost_with_tomeklinks.pkl" : "1zeJ2AiB7mcc8UNgTaTmhKBHAiAryEhuw",
+
+      # CatBoost
+      "baseline_catboost_without_smote.pkl" : "1g1SfUygWtpL1CHmV-Q8Qwfk-TS5kErVy",
+      "baseline_catboost_with_smote.pkl" : "1_5wbWGGY3L-jOkURwLjMhg3pxGt0i70M",
+      "baseline_catboost_with_adasyn.pkl" : "13n7NcQe9DC5qWr5NxrHXARMZgO7-Yfwp",
+      "baseline_catboost_with_tomeklinks.pkl" : "1CDWP9Ca37YmaP6rtQjoWmjrYq4VvWbA0",
+      "stacked_catboost_without_smote.pkl" : "1uFV0w8uJeQt0t03_1qaC9vkkiGn8sl4l",
+      "stacked_catboost_with_smote.pkl" : "18LXlcqmH3e_ZGuy8S0yMTkiGk7mZDBL7",
+      "stacked_catboost_with_adasyn.pkl" : "160b3L-z_6ngv_oRIbLVwxvWyx_LsLMKP",
+      "stacked_catboost_with_tomeklinks.pkl" : "1IocOCxYabd5-o9SSFjP9OcqUxFf28jqi",
+
+      # GBM
+      "baseline_gbm_without_smote.pkl" : "1Mi3QkZN7VeWvA6pIHCNDh3IOJwuPk_k4",
+      "baseline_gbm_with_smote.pkl" : "1YXnqhi3NdwOxLsTcrsemC_P7lp8h7wP9",
+      "baseline_gbm_with_adasyn.pkl" : "13ekR1C_CfKwoYTXgUoV9hngjogCgOFsW",
+      "baseline_gbm_with_tomeklinks.pkl" : "1gyuj6UqkM87TKMmLlaff5XGrsc3-j5RP",
+      "stacked_gbm_without_smote.pkl" : "1-xmA0m_sMklZaSWpMHMS3X9ESG6l1ghH",
+      "stacked_gbm_with_smote.pkl" : "1AobLBn8F08vDNvJkHZ8upfjB4JVnQNw8",
+      "stacked_gbm_with_adasyn.pkl" : "1l2BvcCIa0_i-Xv8rbC9hBF07fBEb5Shk",
+      "stacked_gbm_with_tomeklinks.pkl" : "1ZyrdHMDt8cYaOBKK9qNFACOwZZ9Fy9wA",
+
+      # LightGBM
+      "baseline_lightgbm_without_smote.pkl" : "1y0pMd00BZZwtiKCT0jpWECLc4wmJAACf",
+      "baseline_lightgbm_with_smote.pkl" : "1yjMgwuQtLx4ymQG_bXTYd_B4Q4lz6NJu",
+      "baseline_lightgbm_with_adasyn.pkl" : "1Qlj3VR0v9n-kf39_-XdBZt2u_oTlbAIb",
+      "baseline_lightgbm_with_tomeklinks.pkl" : "1SFEAcaNQ6MB2EkYJtJ7dosOMG4Qe2r9S",
+      "stacked_lightgbm_without_smote.pkl" : "14VNHa1nNCDIteCDUvXykwW57tANp6c4f",
+      "stacked_lightgbm_with_smote.pkl" : "1K7oLk7ncmns2YwjE1eiFaXKvsriaMznH",
+      "stacked_lightgbm_with_adasyn.pkl" : "1t7MzieDdWLBrkFcy088BZQ3Q1KkNXVZZ",
+      "stacked_lightgbm_with_tomeklinks.pkl" : "1IWz0HQni-3McWR1ZtMRVTNmNLJQeHKH4",
+
+      # Random Forest
+      "baseline_randomforest_without_smote.pkl" : "1j7vDUu0P19xSn4s9t8XmE0z8OaoHce5-",
+      "baseline_randomforest_with_smote.pkl" : "18eGzdpR8FkVE1S8KWMPnkZF8EbI120u3",
+      "baseline_randomforest_with_adasyn.pkl" : "1xViLo7erP0H_hhXSc6Gunb8mOV4JZ3nH",
+      "baseline_randomforest_with_tomeklinks.pkl" : "1UhF4olmEPEFQqgq14LJfLiCcguQoqT_e",
+      "stacked_randomforest_without_smote.pkl" : "1CNrB2Y6TXIUnm6KwKYy9GWvTNT699xZJ",
+      "stacked_randomforest_with_smote.pkl" : "1S2GwFY9j3-VS_S9ZIbQfCRUaPoPU3h_h",
+      "stacked_randomforest_with_adasyn.pkl" : "1ziu0QbUNB2J8Zz8sNymH1DUl-4mOLleh",
+      "stacked_randomforest_with_tomeklinks.pkl" : "1Is7KZSeyAiUj8bETsGKr0cmBrkLZiOQl",
+
+      # XGBoost
+      "baseline_xgboost_without_smote.pkl" : "1YaY1CdqJZVu2SKn16ULlSQr6o74CNpvD",
+      "baseline_xgboost_with_smote.pkl" : "1utUophX0cpkdqMV_66muPvvdFue6Ejzl",
+      "baseline_xgboost_with_adasyn.pkl" : "1TSRKqvQ-m5bVXgq3mymZW2BMqJ4wYa6Q",
+      "baseline_xgboost_with_tomeklinks.pkl" : "1DdH-iOd49IaXRh_l6USTnkSP0sAvWJ02",
+      "stacked_xgboost_without_smote.pkl" : "1CZrJwr5WiFweg4xUriS6rMGy53wJMNZH",
+      "stacked_xgboost_with_smote.pkl" : "1ACQoIstKRzUetbigGx3GqvdFqR7FFxJv",
+      "stacked_xgboost_with_adasyn.pkl" : "1QD03tDR_YujJsh9d9GbW_EjfDrWrrUCW",
+      "stacked_xgboost_with_tomeklinks.pkl" : "1YtqciQn5uIG5AKLRCrxSaqROkmSZUc_0"
+    }
+
+    if filename not in file_ids:
+      raise FileNotFoundError(f"Nincs ilyen fájl ID: {filename}")
+
+    file_id = file_ids[filename]
+    drive_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+
+    r = requests.get(drive_url)
     if r.status_code == 200:
       with open(local_path, "wb") as f:
         f.write(r.content)
     else:
-      raise FileNotFoundError(f"A modell nem található: {github_url}")
+      raise FileNotFoundError(f"A modell nem található: {r.status_code}")
 
-  print(f"URL: {github_url}")
   return local_path
 
 @app.post("/predict_model")
