@@ -1,0 +1,16 @@
+{
+  "name": "gui",
+  "version": "1.0.0",
+  "description": "Pulsar detection",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron ."
+  },
+  "author": "Mate Horvath",
+  "license": "ISC",
+  "devDependencies": {
+    "@electron-forge/publisher-github": "^7.8.0",
+    "electron": "^34.0.2"
+  }
+}
