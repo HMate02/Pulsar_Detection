@@ -191,7 +191,6 @@ def predict_model(input: ModelInput):
       "f1" : f1,
       "precision" : precision,
       "recall" : recall,
-      "confusion_matrix" : conf_matrix.tolist(),
       "confusion_matrix_plot" : base64_conf_matrix_image,
       "roc_curve_plot" : base64_roc_image
   }
