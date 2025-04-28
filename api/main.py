@@ -12,8 +12,13 @@ from pydantic import BaseModel
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_curve, roc_auc_score, auc, confusion_matrix
 from sklearn.model_selection import train_test_split
 import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 import joblib
 import requests
+import io
+import base64
 import os
 
 SEED = 42
@@ -87,7 +92,6 @@ def get_model_path(model_type, model_name, sampling):
       "baseline_randomforest_with_tomeklinks.pkl" : "1UhF4olmEPEFQqgq14LJfLiCcguQoqT_e",
       "stacked_randomforest_without_smote.pkl" : "1CNrB2Y6TXIUnm6KwKYy9GWvTNT699xZJ",
       "stacked_randomforest_with_smote.pkl" : "1S2GwFY9j3-VS_S9ZIbQfCRUaPoPU3h_h",
-      "stacked_randomforest_with_adasyn.pkl" : "1ziu0QbUNB2J8Zz8sNymH1DUl-4mOLleh",
       "stacked_randomforest_with_tomeklinks.pkl" : "1Is7KZSeyAiUj8bETsGKr0cmBrkLZiOQl",
 
       # XGBoost
@@ -102,7 +106,7 @@ def get_model_path(model_type, model_name, sampling):
     }
 
     if filename not in file_ids:
-      raise FileNotFoundError(f"Nincs ilyen fájl ID: {filename}")
+      raise FileNotFoundError(f"File not found: {filename}")
 
     file_id = file_ids[filename]
     drive_url = f"https://drive.google.com/uc?export=download&id={file_id}"
@@ -112,13 +116,14 @@ def get_model_path(model_type, model_name, sampling):
       with open(local_path, "wb") as f:
         f.write(r.content)
     else:
-      raise FileNotFoundError(f"A modell nem található: {r.status_code}")
+      raise FileNotFoundError(f"Model not found: {r.status_code}")
 
   return local_path
 
 @app.post("/predict_model")
 def predict_model(input: ModelInput):
   model_path = get_model_path(input.model_type, input.model_name, input.sampling)
+  print(model_path)
   model = joblib.load(model_path)
 
   htru2_data = pd.read_csv('https://raw.githubusercontent.com/szbela87/ml_22_elteik/main/data/HTRU_2.csv', header=None)
@@ -130,13 +135,55 @@ def predict_model(input: ModelInput):
   X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1/0.9, random_state=SEED)
 
   y_pred = model.predict(X_test)
+  y_pred_proba = model.predict_proba(X_test)[:, 1]
 
   accuracy = accuracy_score(y_test, y_pred)
   auc = roc_auc_score(y_test, y_pred)
   f1 = f1_score(y_test, y_pred)
   precision = precision_score(y_test, y_pred)
   recall = recall_score(y_test, y_pred)
+
+  # Confusion Matrix Plot
+
   conf_matrix = confusion_matrix(y_test, y_pred)
+  class_names = ['Not Pulsar', 'Pulsar']
+
+  group_names = ['True Negative:', 'False Positive:', 'False Negative:', 'True Positive:']
+  group_counts = ["{0:0.0f}".format(value) for value in conf_matrix.flatten()]
+  labels = [f"{v1}\n{v2}" for v1, v2 in zip(group_names, group_counts)]
+  labels = np.asarray(labels).reshape(2, 2)
+
+  plt.figure(figsize=(6, 4))
+  sns.heatmap(conf_matrix, annot=labels, fmt="", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
+  plt.xlabel('Predicted values')
+  plt.ylabel('Actual values')
+
+  buffer = io.BytesIO()
+  plt.savefig(buffer, format="png")
+  buffer.seek(0)
+  base64_conf_matrix_image = base64.b64encode(buffer.read()).decode("utf-8")
+  plt.close()
+
+  # ROC Curve Plot
+
+  fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+  roc_auc = roc_auc_score(y_test, y_pred_proba)
+
+  plt.figure(figsize=(6, 4))
+  plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+  plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+  plt.xlim([0.0, 1.0])
+  plt.ylim([0.0, 1.05])
+  plt.xlabel('False Positive Rate')
+  plt.ylabel('True Positive Rate')
+  plt.title('Receiver Operating Characteristic')
+  plt.legend(loc="lower right")
+
+  buffer_roc = io.BytesIO()
+  plt.savefig(buffer_roc, format="png")
+  buffer_roc.seek(0)
+  base64_roc_image = base64.b64encode(buffer_roc.read()).decode("utf-8")
+  plt.close()
 
   return {
       "accuracy" : accuracy,
@@ -144,6 +191,8 @@ def predict_model(input: ModelInput):
       "f1" : f1,
       "precision" : precision,
       "recall" : recall,
-      "confusion_matrix" : conf_matrix.tolist()
+      "confusion_matrix" : conf_matrix.tolist(),
+      "confusion_matrix_plot" : base64_conf_matrix_image,
+      "roc_curve_plot" : base64_roc_image
   }
 
