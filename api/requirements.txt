@@ -7,9 +7,6 @@ seaborn
 matplotlib
 joblib
 requests
-io
-base64
-os
 uvicorn
 catboost
 lightgbm
